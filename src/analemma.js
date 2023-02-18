@@ -455,7 +455,7 @@ function dynamics() {
 
     //Compute angle of that vector
 
-    anomaly = 0;
+    const anomaly = 0;
     apparent_sun.rotation.y = anomaly;
 
     sundirection.subVectors(sun.position, earth_frame.position);
