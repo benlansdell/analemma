@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<title>The ana-what?</title>
+		<link type="text/css" rel="stylesheet" href="main.css">
+		<style>
+			.label {
+				color: #FFF;
+				font-family: sans-serif;
+				padding: 2px;
+				background: rgba( 0, 0, 0, .6 );
+			}
+		</style>
+	</head>
+	<body>
+		<div id="info">What is the analemma?</div>
+        <div id="scene-container" style="margin: auto; height: 800px; width: 800px"></div>
+		<script async src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script>
+		<script type="importmap">
+			{
+				"imports": {
+				"three": "https://unpkg.com/three@0.138.0/build/three.module.js",
+				"CSS2DRenderer": "https://unpkg.com/three@0.138.0/examples/jsm/renderers/CSS2DRenderer.js",
+				"OrbitControls": "https://unpkg.com/three@0.138.0/examples/jsm/controls/OrbitControls.js",
+				"PointerLockControls": "https://unpkg.com/three@0.138.0/examples/jsm/controls/PointerLockControls.js",
+				"GUI": "https://unpkg.com/three@0.138.0/examples/jsm/libs/lil-gui.module.min.js"
+				}
+			}
+		</script>
+        <script src="analemma.js" type="module"></script>
+	</body>
+</html>
+
