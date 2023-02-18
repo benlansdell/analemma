@@ -448,6 +448,16 @@ function dynamics() {
     earth.rotation.y = 2 * Math.PI * elapsedTime;
     mean_sun.rotation.y = -meanAnomaly;
 
+    //Take vector from earth to sun
+    sundirection.subVectors(sun.position, earth_frame.position).normalize();
+
+    //Project it onto celestial equator
+
+    //Compute angle of that vector
+
+    anomaly = 0;
+    apparent_sun.rotation.y = anomaly;
+
     sundirection.subVectors(sun.position, earth_frame.position);
     sundirection.normalize().multiplyScalar(5);
     sundirection.add(earth_frame.position);
