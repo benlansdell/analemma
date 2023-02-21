@@ -8,6 +8,7 @@ let gui;
 
 let camera, scene, renderer, labelRenderer, controls;
 let perihelionLabel, aphelionLabel, earthLabel, moonLabel;
+let anomaly, meanAnomaly;
 
 var params = {
     clockRate: 1,
@@ -436,26 +437,44 @@ function dynamics() {
     }
     elapsedTime += clock.getDelta() * multiplier;
 
-    var t = clock.getElapsedTime();
-    var meanAnomaly = -2 * Math.PI * elapsedTime / earthSiderealYear;
+    //var t = clock.getElapsedTime();
+    meanAnomaly = 2 * Math.PI * elapsedTime / earthSiderealYear;
+    meanAnomaly %= Math.PI*2;
     let x, z;
-    [x, z] = keplerDynamics(meanAnomaly);
+    [x, z] = keplerDynamics(-meanAnomaly);
     earth_frame.position.set(x, 0, z);
     moon.position.set(Math.sin(2 * Math.PI * elapsedTime / moonSiderealMonth) * moonDist, 0, Math.cos(2 * Math.PI * elapsedTime / moonSiderealMonth) * moonDist);
     // if (params['fix_view'] == false) {
     //     camera.position.set( earth.position.x, earth.position.y, earth.position.z);
     // }
     earth.rotation.y = 2 * Math.PI * elapsedTime;
-    mean_sun.rotation.y = -meanAnomaly;
+    mean_sun.rotation.y = meanAnomaly;
 
-    //Take vector from earth to sun
-    sundirection.subVectors(sun.position, earth_frame.position).normalize();
+    //Convert it to earth frame
+    earth_frame.updateMatrixWorld(); //Make sure the object matrix is current with the position/rotation/scaling of the object...
+    var localPt = earth_frame.worldToLocal(sun.position.clone()); //Transform the point from world space into the objects space
 
     //Project it onto celestial equator
-
-    //Compute angle of that vector
-
-    const anomaly = 0;
+    if (localPt.y < 0) { 
+        localPt.y = 0;
+        const unit_vector = new THREE.Vector3(1,0,0);
+        anomaly = unit_vector.angleTo(localPt);
+        anomaly += Math.PI;
+    } else if (localPt.y > 0) {
+        localPt.y = 0;
+        const unit_vector = new THREE.Vector3(-1,0,0);
+        anomaly = unit_vector.angleTo(localPt);
+    } else {
+        var unit_vector = new THREE.Vector3(1,0,0);
+        if (unit_vector.dot(localPt) > 0) {
+            anomaly = unit_vector.angleTo(localPt);
+        } else {
+            var unit_vector = new THREE.Vector3(-1,0,0);
+            anomaly = unit_vector.angleTo(localPt);
+        }
+    }
+    
+    anomaly %= Math.PI*2;
     apparent_sun.rotation.y = anomaly;
 
     sundirection.subVectors(sun.position, earth_frame.position);
@@ -511,15 +530,29 @@ function animate() {
         controls.update();
     }
     render();
-    //stats.update();
     updateText();
 }
+
+const formatTime = (seconds)=>{
+    var flag = '';
+    if (seconds < 0) {
+        seconds *= -1;
+        flag = ' before'
+    }
+    const hours = Math.floor(seconds/60/60)
+    const minutes = Math.floor((seconds - hours*60*60)/60)
+    const secs = Math.floor(seconds - minutes*60 - hours*60*60);
+    const dd = [hours, minutes, secs].map((a)=>(a < 10 ? '0' + a : a));
+    return dd.join(':') + flag;
+};
 
 function updateText() {
     //perihelion is on Jan 4th, 2023. So offset 4 days
     const date = new Date(2023, 0, 4+elapsedTime);
-    const date_str = date.toLocaleDateString()
-    text.innerHTML = "What is the analemma?<br>" + date_str;
+    const date_str = date.toLocaleDateString();
+    const eot = ((anomaly - meanAnomaly)*180/Math.PI/24)*60*60; //in seconds
+    var eot_str = formatTime(eot);
+    text.innerHTML = "What is the analemma?<br>" + date_str + "<br>Equation of time: " + eot_str;
 }
 
 function render() {

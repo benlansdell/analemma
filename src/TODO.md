@@ -3,13 +3,12 @@ TODO:
 * Fix text issues
 * Change camera selection issues
 * Refine camera modes
-* Make one camera mode be at center of earth (turn earth [and moon] off)
-
-* Highlight EOT
+* Make one camera mode be at center of earth (turn earth and moon off)
 * Draw trails behind apparent sun -- so it draws the analemma
 
 DONE
 
+x Highlight EOT
 x Show text -- the day, month, etc, and the eot
 x Add option to change obliquity of earth
 x Label parts of the orbit -- perihelion, aphelion, solstice, equinox, etc.
