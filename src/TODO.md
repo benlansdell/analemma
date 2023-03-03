@@ -1,13 +1,22 @@
 TODO:
 
-* Fix text issues
-* Change camera selection issues
-* Refine camera modes
-* Make one camera mode be at center of earth (turn earth and moon off)
-* Draw trails behind apparent sun -- so it draws the analemma
+* Fix text issues: why do labels disappear?
+* Change camera selection/angle issues
+* Currently: solstice and perihelion occur at same time... need to rotate earth's axis so that it occurs
+  on Dec 21st. Make it so we can precess as desired
+* Make draw trails button work
+* Clean up code
+* What to do about planets with retrograde rotations?
+  Take these out...
 
 DONE
 
+x Add a set to Earth's parameteres button
+x Add a pause button
+x Refine camera modes
+x Draw trails behind apparent sun -- so it draws the analemma
+x Turn moon off...
+x Make one camera mode be at center of earth (turn earth and moon off)
 x Highlight EOT
 x Show text -- the day, month, etc, and the eot
 x Add option to change obliquity of earth
