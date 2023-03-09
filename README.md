@@ -1,5 +1,7 @@
 # Exploring the analemma with Three.js
 
+(See a live version [here](https://benlansdell.github.io/expositions/analemma/src/))
+
 What is the equation of time?
 
 The earth's orbit is not perfectly circular, but elliptical, and the earth's axis of rotation is offset relative to the plane on which it orbits the sun. These are referred to as the eccentricity and obliquity of the earth's orbit. These two factors mean the time as measured by a sundial and the time as measured by our watches differ -- the length of a solar day varies throughout the year, while our watches continue ticking at a uniform rate. 
