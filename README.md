@@ -7,3 +7,5 @@ The earth's orbit is not perfectly circular, but elliptical, and the earth's axi
 This difference is referred to as the 'equation of time', and it's easily observable, if you're patient and dedicated enough: if you take a photo of the sky at the same time every day for a year, the sun will walk around in the sky a little, owing to these variations and to the season. The shape it traces is known as the analemma. 
 
 This Three.js app explores the relation between eccentricity, obliquity, the equation of time and the analemma. A [forthcoming] blog post will do a much better job of explaining all these concepts than the above short introduction.
+
+![analemma](./assets/analemma_demo.jpg)
