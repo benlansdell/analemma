@@ -7,11 +7,14 @@ import { GUI } from 'GUI';
 let gui;
 let camera, scene, renderer, labelRenderer, controls;
 let perihelionLabel, aphelionLabel, analemma;
+let vernalEqLabel, summerSolsLabel, autumnalEqLabel, winterSolsLabel;
 let anomaly, meanAnomaly;
 let trails = [];
 let earth, sun, current_object, current_view;
 let earth_frame, mean_sun, mean_sun_orb, sphere_sun_orb;
+let winter_solstice_orb, summer_solstice_orb, autumn_orb, vernal_orb;
 let apparent_sun;
+let solstices_etc;
 
 const max_trail_len = 1000;
 const sunCamOffset = 20;
@@ -20,16 +23,16 @@ const SUN_RADIUS = 3;
 const EARTH_RADIUS = 1;
 
 const planets = {
-    mercury: { eccentricity: 0.2056, obliquity: 0.034, siderealYear: 87.968},
-    venus: { eccentricity: 0.00677, obliquity: 2.64, siderealYear: 224.7},
-    earth: { eccentricity: 0.0167, obliquity: 23.4, siderealYear: 365.2422},
-    mars: { eccentricity: 0.0934, obliquity: 25.19, siderealYear: 686.98},
-    jupiter: { eccentricity: 0.0489, obliquity: 3.13, siderealYear: 4332.6},
-    saturn: { eccentricity: 0.0565, obliquity: 26.73, siderealYear: 10759.2},
-    uranus: { eccentricity: 0.04717, obliquity: 97.77, siderealYear: 30688.5},
-    neptune: { eccentricity: 0.008678, obliquity: 28.3, siderealYear: 60195},
-    pluto: { eccentricity: 0.2488, obliquity: 122.53, siderealYear: 90560},
+    mercury: { eccentricity: 0.2056, obliquity: 0.034, siderealYear: 87.968, precession: 180-77},
+    earth: { eccentricity: 0.0167, obliquity: 23.4, siderealYear: 365.2422, precession: 180-103},
+    mars: { eccentricity: 0.0934, obliquity: 25.19, siderealYear: 686.98, precession: 180-66},
+    jupiter: { eccentricity: 0.0489, obliquity: 3.13, siderealYear: 4332.6, precession: 180-96},
+    saturn: { eccentricity: 0.052, obliquity: 26.73, siderealYear: 10759.2, precession: 180-92},
+    neptune: { eccentricity: 0.008678, obliquity: 28.3, siderealYear: 60195, precession: 180-44}
 }
+//uranus: { eccentricity: 0.04717, obliquity: 97.77, siderealYear: 30688.5},
+//pluto: { eccentricity: 0.2488, obliquity: 122.53, siderealYear: 90560},
+//venus: { eccentricity: 0.00677, obliquity: 2.64, siderealYear: 224.7},
 
 let last_updated_day = 0;
 var elapsedTime = 0;
@@ -47,36 +50,37 @@ const direction = new THREE.Vector3();
 const delEarthFrame = new THREE.Vector3();
 const sundirection = new THREE.Vector3();
 
-//Controls settings
+//GUI settings
 var params = {
     clockRate: 1,
-    eccentricity: 0.0167,
+    eccentricity: planets['earth']['eccentricity'],
     fix_view: false,
-    draw_trails: true,
-    view: "earth",
-    obliquity: 23.4,
+    view: "planet above",
+    obliquity: planets['earth']['obliquity'],
     isPaused: false,
-    preset: "earth"
+    preset: "earth",
+    precession: planets['earth']['precession'],
 }
 
 function update_presets(value) {
     if (value in planets & value != 'custom') {
        params['obliquity'] = planets[value]['obliquity'];
        params['eccentricity'] = planets[value]['eccentricity'];        
-        siderealYear = planets[value]['siderealYear']
+       params['precession'] = planets[value]['precession'];        
+       solsticesEquinoxes();
        updateKeplerOrbit(scene);
        updateEarthPlane(scene);
     }
 }
 
 function update_view(value) {
-    if (value == 'earth above') {
+    if (value == 'planet above') {
         current_view = 'earth'; 
         current_object = earth;
         
         var prevCamera = camera;
         camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientWidth, 0.1, 200000);
-        camera.up.set(0, Math.cos(earthsTilt), Math.sin(earthsTilt)); 
+        camera.up.set(0, Math.cos(params['obliquity']), Math.sin(params['obliquity'])); 
         camera.position.copy( prevCamera.position );
         camera.rotation.copy( prevCamera.rotation );
         controls = new OrbitControls(camera, labelRenderer.domElement);
@@ -91,7 +95,7 @@ function update_view(value) {
         camera.lookAt( camera.position.x + 1, camera.position.y, camera.position.z )
         controls = new OrbitControls(camera, labelRenderer.domElement);
 
-    } else if (value == 'earth surface') {
+    } else if (value == 'planet surface') {
         current_view = 'surface'; current_object = earth;
         var prevCamera = camera;
         camera = new THREE.PerspectiveCamera(65, container.clientWidth / container.clientWidth, 0.1, 200000);
@@ -108,7 +112,7 @@ function update_view(value) {
         container.addEventListener( 'click', function () {
             controls.lock();
         } );
-    } else if (value == 'earth center') {
+    } else if (value == 'planet center') {
         current_view = 'center'; current_object = earth;
         var prevCamera = camera;
         camera = new THREE.PerspectiveCamera(65, container.clientWidth / container.clientWidth, 0.1, 200000);
@@ -136,11 +140,59 @@ function aphelion_x() {
     return sunDist * (1 + params['eccentricity'])
 }
 
+function winter_sols_pos() {
+    return keplerDynamics(solstices_etc['wintersol'][0])
+}
+
+function summer_sols_pos() {
+    return keplerDynamics(solstices_etc['summersol'][0])
+}
+
+function vernal_eq_pos() {
+    return keplerDynamics(solstices_etc['vernaleq'][0])
+}
+
+function autumn_eq_pos() {
+    return keplerDynamics(solstices_etc['autumneq'][0])
+}
+
 function newtonsMethod(x, f, df, N) {
     for (var i = 0; i < N; i++) {
         x = x - f(x) / df(x);
     }
     return x;
+}
+
+function mean_from_true(ta) {
+
+    var ecc_an = 2*(Math.atan(Math.tan(ta/2)*Math.sqrt((1-params['eccentricity'] )/(1+params['eccentricity'] ))));
+
+    //var ecc_an = ;
+
+    // Math.tan(ta/2)*Math.sqrt((1 - params['eccentricity']) / (1 + params['eccentricity'])) = Math.tan(eccAnomaly / 2);
+
+
+    var ma = ecc_an - params['eccentricity'] * Math.sin(ecc_an);
+    const date = new Date(2023, 0, 4-ma*siderealYear/2/Math.PI);
+    const date_str = date.toLocaleDateString('en-EN', {month: 'numeric', day: 'numeric'}); 
+    return [ma, date_str];
+
+}
+
+function solsticesEquinoxes() {
+
+    var ta_w = Math.PI/2-params['precession']/180*Math.PI;
+    var ta_v = -params['precession']/180*Math.PI;
+
+    var ta_s = 3*Math.PI/2-params['precession']/180*Math.PI;
+    var ta_a = Math.PI-params['precession']/180*Math.PI;
+
+    solstices_etc = {
+        vernaleq: mean_from_true(ta_v),
+        autumneq: mean_from_true(ta_a),
+        wintersol: mean_from_true(ta_w),
+        summersol: mean_from_true(ta_s)
+    }
 }
 
 function keplerDynamics(meanAnomaly) {
@@ -171,7 +223,7 @@ function dynamics() {
     [x, z] = keplerDynamics(-meanAnomaly);
     earth_frame.position.set(x, 0, z);
     earth.rotation.y = 2*Math.PI*elapsedTime;
-    mean_sun.rotation.y = meanAnomaly;
+    mean_sun.rotation.y = meanAnomaly - params['precession']/180*Math.PI;
 
     //Convert it to earth frame
     earth_frame.updateMatrixWorld(); //Make sure the object matrix is current with the position/rotation/scaling of the object...
@@ -197,32 +249,34 @@ function dynamics() {
 }
 
 function updateEarthPlane(scene) {
+    earth_frame.rotation.y = params['precession']/180*Math.PI;
     earth_frame.rotation.x = params['obliquity']/180*Math.PI;
 }
 
 function updateKeplerOrbit(scene) {
     const orbit = scene.getObjectByName('earthorbit');
     var points = orbit.geometry.attributes.position.array;
-    var meanAnomaly = 0, x, z;
+    var ma = 0, x, z;
     for (var i = 0; i < 361; i++) {
-        meanAnomaly = i * Math.PI / 180;
-        [x, z] = keplerDynamics(meanAnomaly);
+        ma = i * Math.PI / 180;
+        [x, z] = keplerDynamics(ma);
         points[3 * i] = x;
         points[3 * i + 1] = 0;
         points[3 * i + 2] = z;
     }
 
     orbit.geometry.attributes.position.needsUpdate = true;
+    orbit.geometry.computeBoundingSphere();
 }
 
 
 function addKeplerOrbit(scene) {
 
     const points = [];
-    var meanAnomaly = 0, x, z;
+    var ma = 0, x, z;
     for (var i = 0; i < 361; i++) {
-        meanAnomaly = i * Math.PI / 180;
-        [x, z] = keplerDynamics(meanAnomaly);
+        ma = i * Math.PI / 180;
+        [x, z] = keplerDynamics(ma);
         points.push(new THREE.Vector3(x, 0, z));
     }
 
@@ -230,13 +284,14 @@ function addKeplerOrbit(scene) {
         color: 0xffffff,
         transparent: true,
         linewidth: 2,
-        opacity: 0.1,
+        opacity: 0.8,
         side: THREE.BackSide
     })
 
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
     const orbit = new THREE.Line(geometry, material);
     orbit.name = 'earthorbit';
+    orbit.frustrumCulled = false;
 
     scene.add(orbit);
 
@@ -251,7 +306,7 @@ function updateTrails(coord) {
     const ana = scene.getObjectByName('analemma');
     var points = ana.geometry.attributes.position.array;
     for (var i = 0; i < trails.length; i++) {
-        meanAnomaly = i * Math.PI / 180;
+        //meanAnomaly = i * Math.PI / 180;
         points[3 * i] = trails[i].x;
         points[3 * i + 1] = trails[i].y;
         points[3 * i + 2] = trails[i].z;
@@ -263,7 +318,7 @@ function updateTrails(coord) {
 function addTrails(scene) {
 
     let x, z;
-    for (var i = 0; i < Math.round(361/analemma_update_rate); i++) {
+    for (var i = 0; i < Math.round(max_trail_len/analemma_update_rate); i++) {
         trails.push(new THREE.Vector3(-5, 0, 0));
     }
 
@@ -369,6 +424,41 @@ function add_sun_celestial_sphere(scene) {
     scene.add(sphere_sun_orb);
 }
 
+function add_marker_orbs() {
+
+    const vernaleqpos = vernal_eq_pos();
+    const autumnaleqpos = autumn_eq_pos();
+    const summersolpos = summer_sols_pos();
+    const wintersolpos = winter_sols_pos();
+    const orb_size = .2;
+    const orb_color = 0x009900;
+
+    let geometry = new THREE.SphereGeometry(orb_size, 32, 32);
+    let material = new THREE.MeshBasicMaterial({opacity : 1.0, transparent : false, color: orb_color});
+    summer_solstice_orb = new THREE.Mesh(geometry, material);
+    summer_solstice_orb.position.set(summersolpos[0], 0, summersolpos[1]);
+    scene.add(summer_solstice_orb);
+
+    geometry = new THREE.SphereGeometry(orb_size, 32, 32);
+    material = new THREE.MeshBasicMaterial({opacity : 1.0, transparent : false, color: orb_color});
+    winter_solstice_orb = new THREE.Mesh(geometry, material);
+    winter_solstice_orb.position.set(wintersolpos[0], 0, wintersolpos[1]);
+    scene.add(winter_solstice_orb);
+
+    geometry = new THREE.SphereGeometry(orb_size, 32, 32);
+    material = new THREE.MeshBasicMaterial({opacity : 1.0, transparent : false, color: orb_color});
+    vernal_orb = new THREE.Mesh(geometry, material);
+    vernal_orb.position.set(vernaleqpos[0], 0, vernaleqpos[1]);
+    scene.add(vernal_orb);
+
+    geometry = new THREE.SphereGeometry(orb_size, 32, 32);
+    material = new THREE.MeshBasicMaterial({opacity : 1.0, transparent : false, color: orb_color});
+    autumn_orb = new THREE.Mesh(geometry, material);
+    autumn_orb.position.set(autumnaleqpos[0], 0, autumnaleqpos[1]);
+    scene.add(autumn_orb);
+
+}
+
 function earth_location(scene) {
 
     const linematerial = new THREE.LineBasicMaterial( { color: 0x0000ff } );
@@ -377,6 +467,8 @@ function earth_location(scene) {
     linepoints.push( new THREE.Vector3( 0, 0, 0 ) );
     const linegeometry = new THREE.BufferGeometry().setFromPoints( linepoints );
     earth_frame = new THREE.Line( linegeometry, linematerial );
+    earth_frame.eulerOrder = 'YXZ'; //Precess before adding obliquity
+    earth_frame.rotation.y = params['precession']/180*Math.PI;
     earth_frame.rotation.x = earthsTilt;
     scene.add(earth_frame);
     return earth_frame;
@@ -433,8 +525,8 @@ function text_setup(scene) {
 
     const perihelionDiv = document.createElement('div');
     perihelionDiv.className = 'label';
-    perihelionDiv.textContent = 'Perihelion';
-    perihelionDiv.style.marginTop = '-1em';
+    perihelionDiv.textContent = 'Perihelion 1/04';
+    perihelionDiv.style.marginTop = '-2em';
     perihelionLabel = new CSS2DObject(perihelionDiv);
     perihelionLabel.position.set(0, 0, 0);
     scene.add(perihelionLabel);
@@ -442,12 +534,50 @@ function text_setup(scene) {
 
     const aphelionDiv = document.createElement('div');
     aphelionDiv.className = 'label';
-    aphelionDiv.textContent = 'Aphelion';
-    aphelionDiv.style.marginTop = '-1em';
+    aphelionDiv.textContent = 'Aphelion 7/06';
+    aphelionDiv.style.marginTop = '-2em';
     aphelionLabel = new CSS2DObject(aphelionDiv);
     aphelionLabel.position.set(-aphelion_x(), 0, 0);
     scene.add(aphelionLabel);
 
+    /// Solstices and equinoxes
+    const vernalEqDiv = document.createElement('div');
+    const vernaleqpos = vernal_eq_pos();
+    vernalEqDiv.className = 'label';
+    vernalEqDiv.textContent = 'Vernal equinox ' + solstices_etc['vernaleq'][1];
+    vernalEqDiv.style.marginTop = '-2em';
+    vernalEqLabel = new CSS2DObject(vernalEqDiv);
+    vernalEqLabel.position.set(vernaleqpos[0], 0, vernaleqpos[1]);
+    scene.add(vernalEqLabel);
+    vernalEqLabel.layers.set(0);
+
+    const summerSolsDiv = document.createElement('div');
+    const sumarsolpos = summer_sols_pos();
+    summerSolsDiv.className = 'label';
+    summerSolsDiv.textContent = 'Summer solstice ' + solstices_etc['summersol'][1];
+    summerSolsDiv.style.marginTop = '-2em';
+    summerSolsLabel = new CSS2DObject(summerSolsDiv);
+    summerSolsLabel.position.set(sumarsolpos[0], 0, sumarsolpos[1]);
+    scene.add(summerSolsLabel);
+
+    const autumnalEqDiv = document.createElement('div');
+    const autumneqpos = autumn_eq_pos();
+    autumnalEqDiv.className = 'label';
+    autumnalEqDiv.textContent = 'Autumnal equinox ' + solstices_etc['autumneq'][1];
+    autumnalEqDiv.style.marginTop = '-2em';
+    autumnalEqLabel = new CSS2DObject(autumnalEqDiv);
+    autumnalEqLabel.position.set(autumneqpos[0], 0, autumneqpos[1]);
+    scene.add(autumnalEqLabel);
+    autumnalEqLabel.layers.set(0);
+
+    const winterSolsDiv = document.createElement('div');
+    const wintersolpos = winter_sols_pos();
+    winterSolsDiv.className = 'label';
+    winterSolsDiv.textContent = 'Winter Solstice ' + solstices_etc['wintersol'][1];
+    winterSolsDiv.style.marginTop = '-2em';
+    winterSolsLabel = new CSS2DObject(winterSolsDiv);
+    winterSolsLabel.position.set(wintersolpos[0], 0, wintersolpos[1]);
+    scene.add(winterSolsLabel);
 }
 
 function init() {
@@ -461,7 +591,12 @@ function init() {
     addKeplerOrbit(scene);
     addTrails(scene);
     the_stars(scene);
+    solsticesEquinoxes();
     text_setup(scene);
+    add_marker_orbs();
+
+    const light = new THREE.AmbientLight( 0x303030 ); // soft white light
+    scene.add( light );
 
     current_object = earth;
     current_view = 'earth';
@@ -502,6 +637,37 @@ function update_label_pos() {
     if (elapsedTime > .01) {
         perihelionLabel.position.set(perihelion_x(),0,0);
         aphelionLabel.position.set(-aphelion_x(),0,0);
+
+        const vernaleqpos = vernal_eq_pos();
+        vernalEqLabel.position.set(vernaleqpos[0], 0, vernaleqpos[1]);
+    
+        const sumarsolpos = summer_sols_pos();
+        summerSolsLabel.position.set(sumarsolpos[0], 0, sumarsolpos[1]);
+    
+        const autumneqpos = autumn_eq_pos();
+        autumnalEqLabel.position.set(autumneqpos[0], 0, autumneqpos[1]);
+    
+        const wintersolpos = winter_sols_pos();
+        winterSolsLabel.position.set(wintersolpos[0], 0, wintersolpos[1]);
+
+        vernal_orb.position.set(vernaleqpos[0], 0, vernaleqpos[1]);    
+        summer_solstice_orb.position.set(sumarsolpos[0], 0, sumarsolpos[1]);
+        autumn_orb.position.set(autumneqpos[0], 0, autumneqpos[1]);
+        winter_solstice_orb.position.set(wintersolpos[0], 0, wintersolpos[1]);
+
+        if (params['preset'] == 'earth' || params['preset'] == 'custom') {
+        vernalEqLabel.element.innerHTML = 'Vernal equinox ' + solstices_etc['vernaleq'][1];
+        summerSolsLabel.element.innerHTML = 'Summer solstice ' + solstices_etc['summersol'][1];
+        autumnalEqLabel.element.innerHTML = 'Autumnal equinox ' + solstices_etc['autumneq'][1];  
+        winterSolsLabel.element.innerHTML = 'Winter Solstice ' + solstices_etc['wintersol'][1];
+        } else {
+            vernalEqLabel.element.innerHTML = 'Vernal equinox';
+            summerSolsLabel.element.innerHTML = 'Summer solstice';
+            autumnalEqLabel.element.innerHTML = 'Autumnal equinox';  
+            winterSolsLabel.element.innerHTML = 'Winter Solstice';
+   
+        }
+
     }
 }
 
@@ -558,7 +724,7 @@ const formatTime = (seconds)=>{
     var flag = '';
     if (seconds < 0) {
         seconds *= -1;
-        flag = ' before'
+        flag = ' behind'
     }
     const hours = Math.floor(seconds/60/60)
     const minutes = Math.floor((seconds - hours*60*60)/60)
@@ -570,10 +736,21 @@ const formatTime = (seconds)=>{
 function updateText() {
     //perihelion is on Jan 4th, 2023. So offset 4 days
     const date = new Date(2023, 0, 4+elapsedTime);
-    const date_str = date.toLocaleDateString(); 
-    const eot = ((anomaly - meanAnomaly)*180/Math.PI/24)*60*60; //in seconds
+    const date_str = date.toLocaleDateString('en-EN', {month: 'numeric', day: 'numeric'}); 
+    var ma = meanAnomaly - params['precession']/180*Math.PI;
+    if (ma < 0) {
+        ma += 2*Math.PI;
+    }
+    var eot = ((anomaly - ma)*180/Math.PI/15)*60*60; //in seconds
+    if (eot < 0) {
+        const eot_alt = ((2*Math.PI + anomaly - ma)*180/Math.PI/15)*60*60;
+        if (Math.abs(eot_alt) < Math.abs(eot)) {
+            eot = eot_alt;
+        }
+    }
+    var solar_day = 0;
     var eot_str = formatTime(eot);
-    text.innerHTML = date_str + "<br>Equation of time: " + eot_str;
+    text.innerHTML = date_str + "<br>Equation of time: " + eot_str + "<br>Mean solar day: 24:00:00.00<br>Solar day: " + solar_day;
 }
 
 function render() {
@@ -585,18 +762,21 @@ function initGui(scene) {
     gui = new GUI();
     gui.add(params, 'isPaused').name('pause')
     gui.add(params, 'clockRate', 0.1, 100, 5).name('clock rate')
-    gui.add(params, 'preset', ["mercury", "venus", "earth", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto", "custom"]).name('setup for').onChange(update_presets);
+    gui.add(params, 'preset', ["mercury","earth", "mars", "jupiter", "saturn", "neptune", "custom"]).name('setup for').onChange(update_presets);
     gui.add(params, 'eccentricity', 0.0, 0.95, 0.1).listen().onChange(function (value) {
+            solsticesEquinoxes();
             updateKeplerOrbit(scene); gui.children[2].setValue('custom');
         }
     );
-    gui.add(params, 'obliquity', 0.0, 180, 1).listen().onChange(function (value) {
+    gui.add(params, 'obliquity', 0.0, 90, 1).listen().onChange(function (value) {
         updateEarthPlane(scene); gui.children[2].setValue('custom');
-    }
-    );
-    gui.add(params, 'view', ["earth above", "earth surface", "earth center", "sun"]).name('viewpoint').onChange(update_view);
+    });
+    gui.add(params, 'precession', 0.0, 360, 1).listen().onChange(function (value) {
+        solsticesEquinoxes();
+        updateEarthPlane(scene); gui.children[2].setValue('custom');
+    });
+    gui.add(params, 'view', ["planet above", "planet surface", "planet center", "sun"]).name('viewpoint').onChange(update_view);
     gui.add(params, 'fix_view').name('fix view').onChange(function (value) {controls.enabled = !value;})
-    gui.add(params, 'draw_trails').name('draw trails')
     gui.open();
 }
 

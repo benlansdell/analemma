@@ -1,16 +1,31 @@
 TODO:
 
-* Fix text issues: why do labels disappear?
 * Change camera selection/angle issues
-* Currently: solstice and perihelion occur at same time... need to rotate earth's axis so that it occurs
-  on Dec 21st. Make it so we can precess as desired
-* Make draw trails button work
+* Reset trails whenever we adjust parameters
+* Make rate of rotation depend on planet selected
+* Make eot depend on duration of selected planet's day
+* Add correct precession amounts for other planets. I think I know how to do it exactly now... look up other planet's "rotation elements"
+* Add estimate of duration of solar day
 * Clean up code
-* What to do about planets with retrograde rotations?
-  Take these out...
 
 DONE
 
+x Add Small points where solitices, etc, are. Hard to figure out exactly where it's claiming it takes place.
+x Small bug with changing eccentricity -- soltices, etc are put in wrong spot
+x Bug where lines disappear when most of it is out of frame
+x Draw analemma in bottom left of screen?
+x Bug? EOT magnitudes seem wrong for earth parameters. Off by factor of 2?
+x Make labels for solstices, etc
+x Also, make trails freq depend on number of days in year
+x Add some ambient lighting so we can see earth even when in shadow
+x Currently: solstice and perihelion occur at same time... need to rotate earth's axis so that it occurs
+  on Dec 21st. Make it so we can precess as desired
+x Add multiplier for number of days in year... otherwise too slow for planets with long years
+x What to do about planets with retrograde rotations?
+  Take these out...along with one's whose obliquity is too small/large to give good analemma
+x Make draw trails toggle button work
+x BUG: equation of time text glitches and flickers to the wrong time, every so many frames
+x Fix text issues: why do labels disappear?
 x Add a set to Earth's parameteres button
 x Add a pause button
 x Refine camera modes
