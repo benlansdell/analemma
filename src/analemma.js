@@ -213,7 +213,7 @@ function dynamics() {
     let delta = clock.getDelta();
 
     if (params['isPaused'] == true) {return 0;}
-    elapsedTime += delta*multiplier;
+    elapsedTime += delta*multiplier; //in days
 
     const day = Math.round(elapsedTime);
 
@@ -245,7 +245,7 @@ function dynamics() {
     sundirection.add(earth_frame.position);
     sphere_sun_orb.position.set(sundirection.x, sundirection.y, sundirection.z);
 
-    return 2*Math.PI*delta*multiplier/siderealYear;
+    return 2*Math.PI*delta*multiplier/siderealYear; //in radians
 }
 
 function updateEarthPlane(scene) {
@@ -717,7 +717,7 @@ function animate() {
         controls.update();
     }
     render();
-    updateText();
+    updateText(delta);
 }
 
 const formatTime = (seconds)=>{
@@ -733,7 +733,17 @@ const formatTime = (seconds)=>{
     return dd.join(':') + flag;
 };
 
-function updateText() {
+const formatSolarTime = (seconds)=>{
+    const hours = Math.floor(seconds/60/60)
+    const minutes = Math.floor((seconds - hours*60*60)/60)
+    const secs = (seconds - minutes*60 - hours*60*60).toFixed(2);
+    const dd = [hours, minutes, secs].map((a)=>(a < 10 ? '0' + a : a));
+    return dd.join(':');
+};
+
+let eot_old = 0;
+
+function updateText(delta) {
     //perihelion is on Jan 4th, 2023. So offset 4 days
     const date = new Date(2023, 0, 4+elapsedTime);
     const date_str = date.toLocaleDateString('en-EN', {month: 'numeric', day: 'numeric'}); 
@@ -748,9 +758,16 @@ function updateText() {
             eot = eot_alt;
         }
     }
-    var solar_day = 0;
+
+    const delta_seconds = delta/2/Math.PI*siderealYear*(24*60*60); //elapsed time in seconds
+    var diff_eot = (eot - eot_old)/delta_seconds; //change in eot/ per second
+    diff_eot *= 24*60*60; //now measure in seconds per day
+
+    var solar_day = 24*60*60 + diff_eot;
     var eot_str = formatTime(eot);
-    text.innerHTML = date_str + "<br>Equation of time: " + eot_str + "<br>Mean solar day: 24:00:00.00<br>Solar day: " + solar_day;
+    text.innerHTML = date_str + "<br>Equation of time: " + eot_str + "<br>Mean solar day: 24:00:00.00<br>Solar day: " + formatSolarTime(solar_day);
+
+    eot_old = eot;
 }
 
 function render() {
