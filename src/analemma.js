@@ -22,6 +22,7 @@ const sunDist = 90;
 const SUN_RADIUS = 3;
 const EARTH_RADIUS = 1;
 
+//Sidereal year here is measure in that planet's mean solar days...
 const planets = {
     mercury: { eccentricity: 0.2056, obliquity: 0.034, siderealYear: 87.968, precession: 180-77},
     earth: { eccentricity: 0.0167, obliquity: 23.4, siderealYear: 365.2422, precession: 180-103},
