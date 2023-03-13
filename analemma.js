@@ -12,6 +12,9 @@ let anomaly, meanAnomaly;
 let trails = [];
 let earth, sun, current_object, current_view;
 let earth_frame, mean_sun, mean_sun_orb, sphere_sun_orb;
+
+let earth_frame_clone, mean_sun_clone;
+
 let winter_solstice_orb, summer_solstice_orb, autumn_orb, vernal_orb;
 let apparent_sun;
 let solstices_etc;
@@ -71,6 +74,7 @@ function update_presets(value) {
        solsticesEquinoxes();
        updateKeplerOrbit(scene);
        updateEarthPlane(scene);
+       updateAnalemma();
     }
 }
 
@@ -205,6 +209,42 @@ function keplerDynamics(meanAnomaly) {
     return [x, z]
 }
 
+function updateAnalemma() {
+
+    let x, z, ma;
+    trails = [];
+    let ef = earth_frame, ms = mean_sun;
+    let position_old = ef.position.clone();
+
+    for (var i = 0; i < Math.round(362); i++) {
+        ma = (2*Math.PI*i/siderealYear);//%(2*Math.PI);
+        [x, z] = keplerDynamics(-ma);    
+
+        ef.position.set(x, 0, z);
+        ms.rotation.y = ma - params['precession']/180*Math.PI;
+        ef.updateMatrixWorld();
+        var localPtMeanSun = ms.worldToLocal(sun.position.clone()).normalize().multiplyScalar(5.0); //Transform the point from world space into the objects space
+        trails.push(localPtMeanSun.clone());
+    }
+
+    const ana = scene.getObjectByName('analemma');
+    var points = ana.geometry.attributes.position.array;
+    for (var j = 0; j < trails.length; j++) {
+        points[3 * j] = trails[j].x;
+        points[3 * j + 1] = trails[j].y;
+        points[3 * j + 2] = trails[j].z;
+    }
+
+    ana.geometry.attributes.position.needsUpdate = true;
+    ana.geometry.computeBoundingSphere();
+
+    ef.position.set(position_old.x, 0, position_old.z);
+    ms.rotation.y = meanAnomaly - params['precession']/180*Math.PI;
+    ef.updateMatrixWorld();
+
+}
+
+
 function dynamics() {
 
     var multiplier = params['clockRate'];
@@ -216,7 +256,7 @@ function dynamics() {
     if (params['isPaused'] == true) {return 0;}
     elapsedTime += delta*multiplier; //in days
 
-    const day = Math.round(elapsedTime);
+    // const day = Math.round(elapsedTime);
 
     meanAnomaly = 2*Math.PI*elapsedTime/siderealYear;
     meanAnomaly %= Math.PI*2;
@@ -229,11 +269,11 @@ function dynamics() {
     //Convert it to earth frame
     earth_frame.updateMatrixWorld(); //Make sure the object matrix is current with the position/rotation/scaling of the object...
     var localPt = earth_frame.worldToLocal(sun.position.clone()).normalize().multiplyScalar(5); //Transform the point from world space into the objects space
-    if ((day % analemma_update_rate == 0) & (last_updated_day != day)) {
-        var localPtMeanSun = mean_sun.worldToLocal(sun.position.clone()).normalize().multiplyScalar(5.0); //Transform the point from world space into the objects space
-        last_updated_day = day;
-        updateTrails(localPtMeanSun.clone());
-    }
+    // if ((day % analemma_update_rate == 0) & (last_updated_day != day)) {
+    //     var localPtMeanSun = mean_sun.worldToLocal(sun.position.clone()).normalize().multiplyScalar(5.0); //Transform the point from world space into the objects space
+    //     last_updated_day = day;
+    //     updateTrails(localPtMeanSun.clone());
+    // }
     localPt.y = 0;
 
     anomaly = Math.atan2(localPt.z, -localPt.x);   
@@ -336,6 +376,24 @@ function addTrails(scene) {
     mean_sun.add(analemma);
 }
 
+function addAnalemma() {
+
+    for (var i = 0; i < 362; i++) {
+        trails.push(new THREE.Vector3(i, 0, i));
+    }
+
+    const material = new THREE.LineBasicMaterial({
+        color: 0xffffff,
+        transparent: false,
+        linewidth: 20,
+        opacity: 1,
+        side: THREE.BackSide
+    })
+    const geometry = new THREE.BufferGeometry().setFromPoints(trails);
+    analemma = new THREE.Line(geometry, material);
+    analemma.name = 'analemma';
+    mean_sun.add(analemma);
+}
 
 function and_scene() {
     camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientWidth, 0.1, 200000);
@@ -462,17 +520,18 @@ function add_marker_orbs() {
 
 function earth_location(scene) {
 
+    let ef;
     const linematerial = new THREE.LineBasicMaterial( { color: 0x0000ff } );
     const linepoints = [];
     linepoints.push( new THREE.Vector3( 0, 0.1, 0 ) );
     linepoints.push( new THREE.Vector3( 0, 0, 0 ) );
     const linegeometry = new THREE.BufferGeometry().setFromPoints( linepoints );
-    earth_frame = new THREE.Line( linegeometry, linematerial );
-    earth_frame.eulerOrder = 'YXZ'; //Precess before adding obliquity
-    earth_frame.rotation.y = params['precession']/180*Math.PI;
-    earth_frame.rotation.x = earthsTilt;
-    scene.add(earth_frame);
-    return earth_frame;
+    ef = new THREE.Line( linegeometry, linematerial );
+    ef.eulerOrder = 'YXZ'; //Precess before adding obliquity
+    ef.rotation.y = params['precession']/180*Math.PI;
+    ef.rotation.x = earthsTilt;
+    scene.add(ef);
+    return ef;
 }
 
 function planet_sun(scene) {
@@ -584,13 +643,16 @@ function text_setup(scene) {
 function init() {
 
     scene = and_scene();
-    earth_location(scene);
+    earth_frame = earth_location(scene);
+    earth_frame_clone = earth_location(scene);
     earth = planet_earth(scene);
     sun = planet_sun(scene);
     add_mean_sun(scene);
     add_sun_celestial_sphere(scene);
     addKeplerOrbit(scene);
-    addTrails(scene);
+    //addTrails(scene);
+    addAnalemma();
+    updateAnalemma();
     the_stars(scene);
     solsticesEquinoxes();
     text_setup(scene);
@@ -729,7 +791,7 @@ const formatTime = (seconds)=>{
     }
     const hours = Math.floor(seconds/60/60)
     const minutes = Math.floor((seconds - hours*60*60)/60)
-    const secs = Math.floor(seconds - minutes*60 - hours*60*60);
+    const secs = (seconds - minutes*60 - hours*60*60).toFixed(2);
     const dd = [hours, minutes, secs].map((a)=>(a < 10 ? '0' + a : a));
     return dd.join(':') + flag;
 };
@@ -766,7 +828,7 @@ function updateText(delta) {
 
     var solar_day = 24*60*60 + diff_eot;
     var eot_str = formatTime(eot);
-    text.innerHTML = date_str + "<br>Equation of time: " + eot_str + "<br>Mean solar day: 24:00:00.00<br>Solar day: " + formatSolarTime(solar_day);
+    text.innerHTML = "Date: " + date_str + "<br>Equation of time: " + eot_str + "<br>Mean solar day: &nbsp;&nbsp;24:00:00.00<br>Solar day: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + formatSolarTime(solar_day);
 
     eot_old = eot;
 }
@@ -781,16 +843,19 @@ function initGui(scene) {
     gui.add(params, 'isPaused').name('pause')
     gui.add(params, 'clockRate', 0.1, 100, 5).name('clock rate')
     gui.add(params, 'preset', ["mercury","earth", "mars", "jupiter", "saturn", "neptune", "custom"]).name('setup for').onChange(update_presets);
-    gui.add(params, 'eccentricity', 0.0, 0.95, 0.1).listen().onChange(function (value) {
+    gui.add(params, 'eccentricity', 0.0, 0.95, 0.01).listen().onChange(function (value) {
             solsticesEquinoxes();
+            updateAnalemma();
             updateKeplerOrbit(scene); gui.children[2].setValue('custom');
         }
     );
-    gui.add(params, 'obliquity', 0.0, 90, 1).listen().onChange(function (value) {
+    gui.add(params, 'obliquity', 0.0, 90, 0.5).listen().onChange(function (value) {
+        updateAnalemma();
         updateEarthPlane(scene); gui.children[2].setValue('custom');
     });
-    gui.add(params, 'precession', 0.0, 360, 1).listen().onChange(function (value) {
+    gui.add(params, 'precession', 0.0, 360, 0.5).listen().onChange(function (value) {
         solsticesEquinoxes();
+        updateAnalemma();
         updateEarthPlane(scene); gui.children[2].setValue('custom');
     });
     gui.add(params, 'view', ["planet above", "planet surface", "planet center", "sun"]).name('viewpoint').onChange(update_view);

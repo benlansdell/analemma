@@ -2,16 +2,17 @@ TODO:
 
 * Change camera selection/angle issues
 * Add correct precession amounts for other planets. I think I know how to do it exactly now... look up other planet's "rotation elements"
+* Minor bug: analemma trail doesn't include final edge...?
+
+DOING
+
 * Make rate of rotation depend on planet selected
 * Make eot depend on duration of selected planet's day -- this is just a scale
 factor 
 
-DOING
-
-* Just plot the whole trail at once, whenever parameters are updated
-
 DONE
 
+x Just plot the whole trail at once, whenever parameters are updated
 x Clean up code
 x Add estimate of duration of solar day
 x Add Small points where solitices, etc, are. Hard to figure out exactly where it's claiming it takes place.
