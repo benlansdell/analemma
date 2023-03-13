@@ -1,14 +1,18 @@
 TODO:
 
 * Change camera selection/angle issues
-* Reset trails whenever we adjust parameters
-* Make rate of rotation depend on planet selected
-* Make eot depend on duration of selected planet's day
 * Add correct precession amounts for other planets. I think I know how to do it exactly now... look up other planet's "rotation elements"
-* Clean up code
+* Make rate of rotation depend on planet selected
+* Make eot depend on duration of selected planet's day -- this is just a scale
+factor 
+
+DOING
+
+* Just plot the whole trail at once, whenever parameters are updated
 
 DONE
 
+x Clean up code
 x Add estimate of duration of solar day
 x Add Small points where solitices, etc, are. Hard to figure out exactly where it's claiming it takes place.
 x Small bug with changing eccentricity -- soltices, etc are put in wrong spot
