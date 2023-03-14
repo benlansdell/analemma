@@ -209,6 +209,8 @@ function keplerDynamics(meanAnomaly) {
     return [x, z]
 }
 
+let analemma_resolution = 10;
+
 function updateAnalemma() {
 
     let x, z, ma;
@@ -216,8 +218,8 @@ function updateAnalemma() {
     let ef = earth_frame, ms = mean_sun;
     let position_old = ef.position.clone();
 
-    for (var i = 0; i < Math.round(362); i++) {
-        ma = (2*Math.PI*i/siderealYear);//%(2*Math.PI);
+    for (var i = 0; i < Math.round(366*analemma_resolution); i++) {
+        ma = (2*Math.PI*i/siderealYear/analemma_resolution);//%(2*Math.PI);
         [x, z] = keplerDynamics(-ma);    
 
         ef.position.set(x, 0, z);
@@ -226,6 +228,7 @@ function updateAnalemma() {
         var localPtMeanSun = ms.worldToLocal(sun.position.clone()).normalize().multiplyScalar(5.0); //Transform the point from world space into the objects space
         trails.push(localPtMeanSun.clone());
     }
+    //trails.push(trails[0].clone());
 
     const ana = scene.getObjectByName('analemma');
     var points = ana.geometry.attributes.position.array;
@@ -338,47 +341,9 @@ function addKeplerOrbit(scene) {
 
 }
 
-function updateTrails(coord) {
-
-    //Update trails list
-    trails.push(coord)
-    trails.shift();
-
-    const ana = scene.getObjectByName('analemma');
-    var points = ana.geometry.attributes.position.array;
-    for (var i = 0; i < trails.length; i++) {
-        //meanAnomaly = i * Math.PI / 180;
-        points[3 * i] = trails[i].x;
-        points[3 * i + 1] = trails[i].y;
-        points[3 * i + 2] = trails[i].z;
-    }
-
-    ana.geometry.attributes.position.needsUpdate = true;
-}
-
-function addTrails(scene) {
-
-    let x, z;
-    for (var i = 0; i < Math.round(max_trail_len/analemma_update_rate); i++) {
-        trails.push(new THREE.Vector3(-5, 0, 0));
-    }
-
-    const material = new THREE.LineBasicMaterial({
-        color: 0xffffff,
-        transparent: true,
-        linewidth: 20,
-        opacity: 1,
-        side: THREE.BackSide
-    })
-    const geometry = new THREE.BufferGeometry().setFromPoints(trails);
-    analemma = new THREE.Line(geometry, material);
-    analemma.name = 'analemma';
-    mean_sun.add(analemma);
-}
-
 function addAnalemma() {
 
-    for (var i = 0; i < 362; i++) {
+    for (var i = 0; i < 366*analemma_resolution; i++) {
         trails.push(new THREE.Vector3(i, 0, i));
     }
 
@@ -805,6 +770,7 @@ const formatSolarTime = (seconds)=>{
 };
 
 let eot_old = 0;
+let solar_day_old;
 
 function updateText(delta) {
     //perihelion is on Jan 4th, 2023. So offset 4 days
@@ -826,7 +792,12 @@ function updateText(delta) {
     var diff_eot = (eot - eot_old)/delta_seconds; //change in eot/ per second
     diff_eot *= 24*60*60; //now measure in seconds per day
 
-    var solar_day = 24*60*60 + diff_eot;
+    if (params['isPaused'] == true) {
+        var solar_day = solar_day_old;
+    } else {
+        var solar_day = 24*60*60 + diff_eot;
+        solar_day_old = solar_day;
+    }
     var eot_str = formatTime(eot);
     text.innerHTML = "Date: " + date_str + "<br>Equation of time: " + eot_str + "<br>Mean solar day: &nbsp;&nbsp;24:00:00.00<br>Solar day: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + formatSolarTime(solar_day);
 

@@ -1,6 +1,6 @@
 # Exploring the analemma with Three.js
 
-(See a live version [here](https://benlansdell.github.io/expositions/analemma/src/))
+(See a live version [here](https://benlansdell.github.io/analemma/))
 
 What is the equation of time?
 
