@@ -2,7 +2,7 @@ TODO:
 
 * Change camera selection/angle issues
 * Add correct precession amounts for other planets. I think I know how to do it exactly now... look up other planet's "rotation elements"
-* Minor bug: analemma trail doesn't include final edge...?
+* Clean up code, a bit at least
 
 DOING
 
@@ -12,6 +12,8 @@ factor
 
 DONE
 
+x Minor bug: analemma trail doesn't include final edge...?
+x Minor bug: when paused, solar day displays NaN
 x Just plot the whole trail at once, whenever parameters are updated
 x Clean up code
 x Add estimate of duration of solar day
