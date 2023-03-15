@@ -1,7 +1,5 @@
 TODO:
 
-* Change camera selection/angle issues
-* Add correct precession amounts for other planets. I think I know how to do it exactly now... look up other planet's "rotation elements"
 * Clean up code, a bit at least
 
 DOING
@@ -10,8 +8,15 @@ DOING
 * Make eot depend on duration of selected planet's day -- this is just a scale
 factor 
 
+EVENTUALLY
+
+* Implement more camera angles...
+
 DONE
 
+x Add correct precession amounts for other planets. I think I know how to do it exactly now... look up other planet's "rotation elements"
+x Change camera selection/angle issues
+x Bug: going from sun to earth view seems to mess up 'up' direction
 x Minor bug: analemma trail doesn't include final edge...?
 x Minor bug: when paused, solar day displays NaN
 x Just plot the whole trail at once, whenever parameters are updated

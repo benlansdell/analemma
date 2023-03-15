@@ -26,18 +26,39 @@ let analemma_resolution = 10;
 let eot_old = 0;
 let solar_day_old;
 
-//Sidereal year here is measure in that planet's mean solar days...
 const planets = {
-    mercury: { eccentricity: 0.2056, obliquity: 0.034, siderealYear: 87.968, precession: 180-77},
-    earth: { eccentricity: 0.0167, obliquity: 23.4, siderealYear: 365.2422, precession: 180-103},
-    mars: { eccentricity: 0.0934, obliquity: 25.19, siderealYear: 686.98, precession: 180-66},
-    jupiter: { eccentricity: 0.0489, obliquity: 3.13, siderealYear: 4332.6, precession: 180-96},
-    saturn: { eccentricity: 0.052, obliquity: 26.73, siderealYear: 10759.2, precession: 180-92},
-    neptune: { eccentricity: 0.008678, obliquity: 28.3, siderealYear: 60195, precession: 180-44}
+    mercury: { eccentricity: 0.2056, obliquity: 0.034, siderealYear: 87.968, precession: 89+77, north_ra: 281, north_dec: 61.4},
+    earth: { eccentricity: 0.0167, obliquity: 23.4, siderealYear: 365.2422, precession: 180-103, north_ra: 0, north_dec: 90.0},
+    mars: { eccentricity: 0.0934, obliquity: 25.19, siderealYear: 686.98, precession: 70+336, north_ra: 317.7, north_dec: 52.9},
+    jupiter: { eccentricity: 0.0489, obliquity: 3.13, siderealYear: 4332.6, precession: -57+14, north_ra: 268.1, north_dec: 64.5},
+    saturn: { eccentricity: 0.052, obliquity: 26.73, siderealYear: 10759.2, precession: -2+92, north_ra: 40.6, north_dec: 83.5},
+    neptune: { eccentricity: 0.008678, obliquity: 28.3, siderealYear: 60195, precession: -10+44, north_ra: 299.3, north_dec: 43.4}
 }
+
+//Sidereal year here is measure in that planet's mean solar days...
+//NOTE Have to take into account longitude of perihelion too!!!
+// const planets = {
+//     mercury: { eccentricity: 0.2056, obliquity: 0.034, siderealYear: 87.968, precession: 180+89+77, north_ra: 281, north_dec: 61.4},
+//     earth: { eccentricity: 0.0167, obliquity: 23.4, siderealYear: 365.2422, precession: 180-103, north_ra: 0, north_dec: 90.0},
+//     mars: { eccentricity: 0.0934, obliquity: 25.19, siderealYear: 686.98, precession: 180+70+336, north_ra: 317.7, north_dec: 52.9},
+//     jupiter: { eccentricity: 0.0489, obliquity: 3.13, siderealYear: 4332.6, precession: 180-57+14, north_ra: 268.1, north_dec: 64.5},
+//     saturn: { eccentricity: 0.052, obliquity: 26.73, siderealYear: 10759.2, precession: 180-2+92, north_ra: 40.6, north_dec: 83.5},
+//     neptune: { eccentricity: 0.008678, obliquity: 28.3, siderealYear: 60195, precession: 180-10+44, north_ra: 299.3, north_dec: 43.4}
+// }
 //uranus: { eccentricity: 0.04717, obliquity: 97.77, siderealYear: 30688.5},
 //pluto: { eccentricity: 0.2488, obliquity: 122.53, siderealYear: 90560},
 //venus: { eccentricity: 0.00677, obliquity: 2.64, siderealYear: 224.7},
+
+//These values look pretty close to what other sources says I should expect. I just guessed the values though. 
+//Above is our attempt at computing values
+// const planets = {
+//     mercury: { eccentricity: 0.2056, obliquity: 0.034, siderealYear: 87.968, precession: 180-77, north_ra: 0, north_dec: 0},
+//     earth: { eccentricity: 0.0167, obliquity: 23.4, siderealYear: 365.2422, precession: 180-103, north_ra: 0, north_dec: 0},
+//     mars: { eccentricity: 0.0934, obliquity: 25.19, siderealYear: 686.98, precession: 180-66, north_ra: 317.7, north_dec: 52.9},
+//     jupiter: { eccentricity: 0.0489, obliquity: 3.13, siderealYear: 4332.6, precession: 180-96, north_ra: 0, north_dec: 0},
+//     saturn: { eccentricity: 0.052, obliquity: 26.73, siderealYear: 10759.2, precession: 180-92, north_ra: 0, north_dec: 0},
+//     neptune: { eccentricity: 0.008678, obliquity: 28.3, siderealYear: 60195, precession: 180-44, north_ra: 0, north_dec: 0}
+// }
 
 var elapsedTime = 0;
 
@@ -76,8 +97,18 @@ function update_presets(value) {
     }
 }
 
-function compute_other_precessions() {
+function compute_other_precessions(planet, ra, dec) {
 
+    const ra_r = ra/Math.PI*180;
+    const dec_r = dec/Math.PI*180;
+    const p_x = Math.cos(ra_r)*Math.cos(dec_r);
+    const p_y = Math.sin(dec_r);
+    const p_z = Math.cos(dec_r)*Math.sin(ra_r);
+    var vec = earth_frame.localToWorld(new THREE.Vector3(p_x, p_y, p_z));
+    vec.subVectors(earth_frame.position, vec);
+    const prec = Math.atan2(vec.z, vec.x)*180/Math.PI;
+    //const prec = Math.atan2(vec.x, vec.z)*180/Math.PI;
+    //console.log(planet, 'precession is ' + prec)
 }
 
 function update_view(value) {
@@ -687,6 +718,12 @@ function animate() {
     requestAnimationFrame(animate);
     let old_earth_pos = earth_frame.position.clone();
     let delta = dynamics();
+
+    compute_other_precessions('mercury', planets['mercury']['north_ra'], planets['mercury']['north_dec']);
+    compute_other_precessions('mars', planets['mars']['north_ra'], planets['mars']['north_dec']);
+    compute_other_precessions('jupiter', planets['jupiter']['north_ra'], planets['jupiter']['north_dec']);
+    compute_other_precessions('saturn', planets['saturn']['north_ra'], planets['saturn']['north_dec']);
+    compute_other_precessions('neptune', planets['neptune']['north_ra'], planets['neptune']['north_dec']);
 
     //What does this line do?
     if (current_view != 'surface' & current_view != 'center') {
