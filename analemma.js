@@ -13,17 +13,18 @@ let trails = [];
 let earth, sun, current_object, current_view;
 let earth_frame, mean_sun, mean_sun_orb, sphere_sun_orb;
 
-let earth_frame_clone, mean_sun_clone;
-
 let winter_solstice_orb, summer_solstice_orb, autumn_orb, vernal_orb;
 let apparent_sun;
 let solstices_etc;
 
-const max_trail_len = 1000;
 const sunCamOffset = 20;
 const sunDist = 90;
 const SUN_RADIUS = 3;
 const EARTH_RADIUS = 1;
+let analemma_resolution = 10;
+
+let eot_old = 0;
+let solar_day_old;
 
 //Sidereal year here is measure in that planet's mean solar days...
 const planets = {
@@ -38,13 +39,10 @@ const planets = {
 //pluto: { eccentricity: 0.2488, obliquity: 122.53, siderealYear: 90560},
 //venus: { eccentricity: 0.00677, obliquity: 2.64, siderealYear: 224.7},
 
-let last_updated_day = 0;
 var elapsedTime = 0;
 
 const earthsTilt = planets['earth']['obliquity']/180*Math.PI;
 var siderealYear = planets['earth']['siderealYear'];
-
-const analemma_update_rate = 2; //Measured in days
 
 const clock = new THREE.Clock();
 const textureLoader = new THREE.TextureLoader();
@@ -78,14 +76,18 @@ function update_presets(value) {
     }
 }
 
+function compute_other_precessions() {
+
+}
+
 function update_view(value) {
     if (value == 'planet above') {
         current_view = 'earth'; 
         current_object = earth;
         
         var prevCamera = camera;
-        camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientWidth, 0.1, 200000);
-        camera.up.set(0, Math.cos(params['obliquity']), Math.sin(params['obliquity'])); 
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200000);
+        //camera.up.set(0, Math.cos(params['obliquity']), Math.sin(params['obliquity'])); 
         camera.position.copy( prevCamera.position );
         camera.rotation.copy( prevCamera.rotation );
         controls = new OrbitControls(camera, labelRenderer.domElement);
@@ -94,7 +96,7 @@ function update_view(value) {
         current_view = 'sun'; camera.up.set(0, 1, 0); current_object = sun;
 
         var prevCamera = camera;
-        camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientWidth, 0.1, 200000);
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200000);
         camera.position.copy( prevCamera.position );
         camera.rotation.copy( prevCamera.rotation );
         camera.lookAt( camera.position.x + 1, camera.position.y, camera.position.z )
@@ -103,7 +105,7 @@ function update_view(value) {
     } else if (value == 'planet surface') {
         current_view = 'surface'; current_object = earth;
         var prevCamera = camera;
-        camera = new THREE.PerspectiveCamera(65, container.clientWidth / container.clientWidth, 0.1, 200000);
+        camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 200000);
         camera.position.set( 0,EARTH_RADIUS+.1,0 );
         camera.rotation.copy( prevCamera.rotation );
         earth_frame.add(camera);
@@ -120,7 +122,7 @@ function update_view(value) {
     } else if (value == 'planet center') {
         current_view = 'center'; current_object = earth;
         var prevCamera = camera;
-        camera = new THREE.PerspectiveCamera(65, container.clientWidth / container.clientWidth, 0.1, 200000);
+        camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 200000);
         camera.position.set( 0,0,0 );
         camera.rotation.copy( prevCamera.rotation );
         earth_frame.add(camera);
@@ -171,12 +173,6 @@ function newtonsMethod(x, f, df, N) {
 function mean_from_true(ta) {
 
     var ecc_an = 2*(Math.atan(Math.tan(ta/2)*Math.sqrt((1-params['eccentricity'] )/(1+params['eccentricity'] ))));
-
-    //var ecc_an = ;
-
-    // Math.tan(ta/2)*Math.sqrt((1 - params['eccentricity']) / (1 + params['eccentricity'])) = Math.tan(eccAnomaly / 2);
-
-
     var ma = ecc_an - params['eccentricity'] * Math.sin(ecc_an);
     const date = new Date(2023, 0, 4-ma*siderealYear/2/Math.PI);
     const date_str = date.toLocaleDateString('en-EN', {month: 'numeric', day: 'numeric'}); 
@@ -209,8 +205,6 @@ function keplerDynamics(meanAnomaly) {
     return [x, z]
 }
 
-let analemma_resolution = 10;
-
 function updateAnalemma() {
 
     let x, z, ma;
@@ -228,7 +222,6 @@ function updateAnalemma() {
         var localPtMeanSun = ms.worldToLocal(sun.position.clone()).normalize().multiplyScalar(5.0); //Transform the point from world space into the objects space
         trails.push(localPtMeanSun.clone());
     }
-    //trails.push(trails[0].clone());
 
     const ana = scene.getObjectByName('analemma');
     var points = ana.geometry.attributes.position.array;
@@ -259,8 +252,6 @@ function dynamics() {
     if (params['isPaused'] == true) {return 0;}
     elapsedTime += delta*multiplier; //in days
 
-    // const day = Math.round(elapsedTime);
-
     meanAnomaly = 2*Math.PI*elapsedTime/siderealYear;
     meanAnomaly %= Math.PI*2;
     let x, z;
@@ -272,11 +263,6 @@ function dynamics() {
     //Convert it to earth frame
     earth_frame.updateMatrixWorld(); //Make sure the object matrix is current with the position/rotation/scaling of the object...
     var localPt = earth_frame.worldToLocal(sun.position.clone()).normalize().multiplyScalar(5); //Transform the point from world space into the objects space
-    // if ((day % analemma_update_rate == 0) & (last_updated_day != day)) {
-    //     var localPtMeanSun = mean_sun.worldToLocal(sun.position.clone()).normalize().multiplyScalar(5.0); //Transform the point from world space into the objects space
-    //     last_updated_day = day;
-    //     updateTrails(localPtMeanSun.clone());
-    // }
     localPt.y = 0;
 
     anomaly = Math.atan2(localPt.z, -localPt.x);   
@@ -361,7 +347,7 @@ function addAnalemma() {
 }
 
 function and_scene() {
-    camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientWidth, 0.1, 200000);
+    camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200000);
     camera.position.set(10, 5, 20);
     camera.layers.enableAll();
     camera.layers.toggle(1);
@@ -609,13 +595,11 @@ function init() {
 
     scene = and_scene();
     earth_frame = earth_location(scene);
-    earth_frame_clone = earth_location(scene);
     earth = planet_earth(scene);
     sun = planet_sun(scene);
     add_mean_sun(scene);
     add_sun_celestial_sphere(scene);
     addKeplerOrbit(scene);
-    //addTrails(scene);
     addAnalemma();
     updateAnalemma();
     the_stars(scene);
@@ -631,13 +615,13 @@ function init() {
 
     earth.layers.enableAll();
 
-    renderer = new THREE.WebGLRenderer();
+    renderer = new THREE.WebGLRenderer({'antialias': true});
     renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setSize(window.innerWidth, window.innerHeight);
     container.append(renderer.domElement);
 
     labelRenderer = new CSS2DRenderer();
-    labelRenderer.setSize(container.clientWidth, container.clientHeight);
+    labelRenderer.setSize(window.innerWidth, window.innerHeight);
     labelRenderer.domElement.style.position = 'absolute';
     labelRenderer.domElement.style.top = '0px';
     container.append(labelRenderer.domElement);
@@ -653,10 +637,10 @@ function init() {
 }
 
 function onWindowResize() {
-    camera.aspect = container.clientWidth / container.clientHeight;
+    camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    labelRenderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    labelRenderer.setSize(window.innerWidth, window.innerHeight);
     controls.handleResize();
 }
 
@@ -769,9 +753,6 @@ const formatSolarTime = (seconds)=>{
     return dd.join(':');
 };
 
-let eot_old = 0;
-let solar_day_old;
-
 function updateText(delta) {
     //perihelion is on Jan 4th, 2023. So offset 4 days
     const date = new Date(2023, 0, 4+elapsedTime);
@@ -829,7 +810,8 @@ function initGui(scene) {
         updateAnalemma();
         updateEarthPlane(scene); gui.children[2].setValue('custom');
     });
-    gui.add(params, 'view', ["planet above", "planet surface", "planet center", "sun"]).name('viewpoint').onChange(update_view);
+    //gui.add(params, 'view', ["planet above", "planet surface", "planet center", "sun"]).name('viewpoint').onChange(update_view);
+    gui.add(params, 'view', ["planet above", "sun"]).name('viewpoint').onChange(update_view);
     gui.add(params, 'fix_view').name('fix view').onChange(function (value) {controls.enabled = !value;})
     gui.open();
 }
