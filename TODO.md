@@ -14,6 +14,7 @@ EVENTUALLY
 
 DONE
 
+X Bug: line widths were too much (in chrome; firefox seems to ignore them)
 x Add correct precession amounts for other planets. I think I know how to do it exactly now... look up other planet's "rotation elements"
 x Change camera selection/angle issues
 x Bug: going from sun to earth view seems to mess up 'up' direction
