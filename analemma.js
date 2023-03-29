@@ -1,4 +1,10 @@
-import * as THREE from 'three';
+// import * as THREE from 'three';
+// import { OrbitControls } from 'OrbitControls';
+// import { PointerLockControls } from 'PointerLockControls';
+// import { CSS2DRenderer, CSS2DObject } from 'CSS2DRenderer';
+// import { GUI } from 'GUI';
+
+import * as THREE from 'https://unpkg.com/three@0.138.1/build/three.module.js';
 import { OrbitControls } from 'OrbitControls';
 import { PointerLockControls } from 'PointerLockControls';
 import { CSS2DRenderer, CSS2DObject } from 'CSS2DRenderer';
@@ -29,37 +35,13 @@ let solar_day_old;
 const add_helpers = false;
 
 const planets = {
-    mercury: { eccentricity: 0.2056, obliquity: 0.034, siderealYear: 87.968, precession: -89+77, north_ra: 281, north_dec: 61.4},
+    mercury: { eccentricity: 0.2056, obliquity: 0.034, siderealYear: 87.968, precession: (360)-89+77, north_ra: 281, north_dec: 61.4},
     earth: { eccentricity: 0.0167, obliquity: 23.4, siderealYear: 365.2422, precession: 180-103, north_ra: 0, north_dec: 90.0},
-    mars: { eccentricity: 0.0934, obliquity: 25.19, siderealYear: 686.98, precession: 180-70+336, north_ra: 317.7, north_dec: 52.9},
+    mars: { eccentricity: 0.0934, obliquity: 25.19, siderealYear: 686.98, precession: 180-70+336-(360), north_ra: 317.7, north_dec: 52.9},
     jupiter: { eccentricity: 0.0489, obliquity: 3.13, siderealYear: 4332.6, precession: 57+14, north_ra: 268.1, north_dec: 64.5},
     saturn: { eccentricity: 0.052, obliquity: 26.73, siderealYear: 10759.2, precession: 2+92, north_ra: 40.6, north_dec: 83.5},
     neptune: { eccentricity: 0.008678, obliquity: 28.3, siderealYear: 60195, precession: 10+44, north_ra: 299.3, north_dec: 43.4}
 }
-
-//Sidereal year here is measure in that planet's mean solar days...
-// const planets = {
-//     mercury: { eccentricity: 0.2056, obliquity: 0.034, siderealYear: 87.968, precession: 180-89+77, north_ra: 281, north_dec: 61.4},
-//     earth: { eccentricity: 0.0167, obliquity: 23.4, siderealYear: 365.2422, precession: 180-103, north_ra: 0, north_dec: 90.0},
-//     mars: { eccentricity: 0.0934, obliquity: 25.19, siderealYear: 686.98, precession: 180-70+336, north_ra: 317.7, north_dec: 52.9},
-//     jupiter: { eccentricity: 0.0489, obliquity: 3.13, siderealYear: 4332.6, precession: 180+57+14, north_ra: 268.1, north_dec: 64.5},
-//     saturn: { eccentricity: 0.052, obliquity: 26.73, siderealYear: 10759.2, precession: 2+92, north_ra: 40.6, north_dec: 83.5},
-//     neptune: { eccentricity: 0.008678, obliquity: 28.3, siderealYear: 60195, precession: 180+10+44, north_ra: 299.3, north_dec: 43.4}
-// }
-//uranus: { eccentricity: 0.04717, obliquity: 97.77, siderealYear: 30688.5},
-//pluto: { eccentricity: 0.2488, obliquity: 122.53, siderealYear: 90560},
-//venus: { eccentricity: 0.00677, obliquity: 2.64, siderealYear: 224.7},
-
-//These values look pretty close to what other sources says I should expect. I just guessed the values though. 
-//Above is our attempt at computing values
-// const planets = {
-//     mercury: { eccentricity: 0.2056, obliquity: 0.034, siderealYear: 87.968, precession: 180-77, north_ra: 0, north_dec: 0},
-//     earth: { eccentricity: 0.0167, obliquity: 23.4, siderealYear: 365.2422, precession: 180-103, north_ra: 0, north_dec: 0},
-//     mars: { eccentricity: 0.0934, obliquity: 25.19, siderealYear: 686.98, precession: 180-66, north_ra: 317.7, north_dec: 52.9},
-//     jupiter: { eccentricity: 0.0489, obliquity: 3.13, siderealYear: 4332.6, precession: 180-96, north_ra: 0, north_dec: 0},
-//     saturn: { eccentricity: 0.052, obliquity: 26.73, siderealYear: 10759.2, precession: 180-92, north_ra: 0, north_dec: 0},
-//     neptune: { eccentricity: 0.008678, obliquity: 28.3, siderealYear: 60195, precession: 180-44, north_ra: 0, north_dec: 0}
-// }
 
 var elapsedTime = 0;
 
@@ -74,12 +56,11 @@ const direction = new THREE.Vector3();
 const delEarthFrame = new THREE.Vector3();
 const sundirection = new THREE.Vector3();
 
-//GUI settings
 var params = {
     clockRate: 1,
     eccentricity: planets['earth']['eccentricity'],
     fix_view: false,
-    view: "planet above",
+    view: "planet",
     obliquity: planets['earth']['obliquity'],
     isPaused: false,
     preset: "earth",
@@ -108,12 +89,11 @@ function compute_other_precessions(planet, ra, dec) {
     var vec = earth_frame.localToWorld(new THREE.Vector3(p_x, p_y, p_z));
     vec.subVectors(earth_frame.position, vec);
     const prec = Math.atan2(vec.z, vec.x)*180/Math.PI;
-    //const prec = Math.atan2(vec.x, vec.z)*180/Math.PI;
-    //console.log(planet, 'precession is ' + prec)
+    console.log(planet, 'precession is ' + prec)
 }
 
 function update_view(value) {
-    if (value == 'planet above') {
+    if (value == 'planet') {
         current_view = 'earth'; 
         current_object = earth;
         
@@ -725,11 +705,11 @@ function animate() {
     let old_earth_pos = earth_frame.position.clone();
     let delta = dynamics();
 
-    compute_other_precessions('mercury', planets['mercury']['north_ra'], planets['mercury']['north_dec']);
-    compute_other_precessions('mars', planets['mars']['north_ra'], planets['mars']['north_dec']);
-    compute_other_precessions('jupiter', planets['jupiter']['north_ra'], planets['jupiter']['north_dec']);
-    compute_other_precessions('saturn', planets['saturn']['north_ra'], planets['saturn']['north_dec']);
-    compute_other_precessions('neptune', planets['neptune']['north_ra'], planets['neptune']['north_dec']);
+    // compute_other_precessions('mercury', planets['mercury']['north_ra'], planets['mercury']['north_dec']);
+    // compute_other_precessions('mars', planets['mars']['north_ra'], planets['mars']['north_dec']);
+    // compute_other_precessions('jupiter', planets['jupiter']['north_ra'], planets['jupiter']['north_dec']);
+    // compute_other_precessions('saturn', planets['saturn']['north_ra'], planets['saturn']['north_dec']);
+    // compute_other_precessions('neptune', planets['neptune']['north_ra'], planets['neptune']['north_dec']);
 
     //What does this line do?
     if (current_view != 'surface' & current_view != 'center') {
@@ -823,7 +803,9 @@ function updateText(delta) {
         solar_day_old = solar_day;
     }
     var eot_str = formatTime(eot);
-    text.innerHTML = "Date: " + date_str + "<br>Equation of time: " + eot_str + "<br>Mean solar day: &nbsp;&nbsp;24:00:00.00<br>Solar day: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + formatSolarTime(solar_day);
+    var html_text = "Date: " + date_str + "<br>Equation of time: " + eot_str + "<br>Mean solar day: &nbsp;&nbsp;24:00:00.00<br>Solar day: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + formatSolarTime(solar_day);
+    // html_text += "<br><a href='explanation.html'>What am I looking at?</a>"
+    text.innerHTML = html_text
 
     eot_old = eot;
 }
@@ -853,8 +835,7 @@ function initGui(scene) {
         updateAnalemma();
         updateEarthPlane(scene); gui.children[2].setValue('custom');
     });
-    //gui.add(params, 'view', ["planet above", "planet surface", "planet center", "sun"]).name('viewpoint').onChange(update_view);
-    gui.add(params, 'view', ["planet above", "sun"]).name('viewpoint').onChange(update_view);
+    gui.add(params, 'view', ["planet", "sun"]).name('viewpoint').onChange(update_view);
     gui.add(params, 'fix_view').name('fix view').onChange(function (value) {controls.enabled = !value;})
     gui.open();
 }
